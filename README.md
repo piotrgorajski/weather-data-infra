@@ -81,6 +81,7 @@ Access the Spark container: `docker run --rm -it --entrypoint bash my-spark-app`
 3. Grant Airflow the permission to Docker daemon:
     - Unsafe: `sudo chmod 666 /var/run/docker.sock`
     - By adding Airflow User to Docker Group
+4. Disable samples DAGs by setting AIRFLOW__CORE__LOAD_EXAMPLES to False
 
 ### (Optional) (Needs testing) Kubernetes cluster for Spark
 1. Start Minikube. Spark requires more resources than Minikube's defaults:
