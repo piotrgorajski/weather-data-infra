@@ -1,80 +1,32 @@
 # weather-data-infra
-Set up local infra for weather data related components
+Set up local infra for weather data related components.
 
 ## Prerequisites
 
 ### Docker
 1. Install Docker engine
 
-### Java
-1. Install Java 11
-2. Set JAVA_HOME
-3. Add JAVA_HOME/bin to PATH
+### Minio
 
-### Spark
-1. Download Spark 3.5.3 for Hadoop 3 and Scala 2.12 (https://spark.apache.org/downloads.html)
-2. Set SPARK_HOME
-3. Add SPARK_HOME/bin to PATH
+`docker compose -f minio/compose.yaml up -d`
 
-### Hadoop
-1. From https://github.com/cdarlint/winutils download:
-    - winutils.exe
-    - hadoop.dll
-2. Move files to C:\hadoop\bin
-3. Set HADOOP_HOME
-4. Add HADOOP_HOME/bin to PATH
+### Base Spark image
 
-## Run the infra
+#### Build
 
-### Create docker network
+`make -f spark/Makefile build`
 
-A dedicated network is required to enable communication between docker containers.
-Specifically between Spark application and Minio.
+#### Push
 
-`docker network create spark-minio-network`
+`make -f spark/Makefile push`
 
-### Running Minio
+#### Build & Push
 
-#### First time
-```
-docker run -d --name minio --network spark-minio-network \
--p 9000:9000 -p 9001:9001 \
--e "MINIO_ROOT_USER=admin" \
--e "MINIO_ROOT_PASSWORD=password" \
-minio/minio server /data --console-address ":9001"
-```
+`make -f spark/Makefile all`
 
-#### Following times
+### Airflow
 
-`docker start minio`
-
-### Triggering Spark Job
-
-#### Prerequisites
-- Define config required to access Minio:
-    - spark.hadoop.fs.s3a.access.key = admin (matching Minio setup above)
-    - spark.hadoop.fs.s3a.secret.key = password (matching Minio setup above)
-    - spark.hadoop.fs.s3a.endpoint = http://minio:9000 (due to Docker network host should be minio instead of localhost, port matching Minio setup above)
-- Docker image built considering:
-    - Base spark image: spark:3.5.3-scala
-    - Containing copied over uber JAR (but no spark, nor hadoop libs included)
-    - With hadoop-aws, hadoop-common and aws-java-sdk-bundle downloaded and put under /opt/spark/jars/
-    - SPARK_HOME/bin added to PATH
-
-#### Docker command
-```
-docker run --rm -it --network spark-minio-network my-spark-app \
-spark-submit \
---master local[*] \
---name weather-data-processor \
---class org.goraj.weatherapp.wdp.Entrypoint \
-/app/weather-data-processor-assembly-0.1.jar -d 2020-07-10
-```
-
-#### Troubleshooting
-Access the Spark container: `docker run --rm -it --entrypoint bash my-spark-app`
-
-### Running Airflow
+#### Context
 1. Use official Airflow guide: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html
 2. Extend airflow compose file with new mount to provide access to docker engine on host:
     `/var/run/docker.sock:/var/run/docker.sock`
@@ -82,6 +34,11 @@ Access the Spark container: `docker run --rm -it --entrypoint bash my-spark-app`
     - Unsafe: `sudo chmod 666 /var/run/docker.sock`
     - By adding Airflow User to Docker Group
 4. Disable samples DAGs by setting AIRFLOW__CORE__LOAD_EXAMPLES to False
+5. Update compose.yaml to point AIRFLOW_PROJ_DIR to Airflow repo that contains DAGs.
+
+#### Run
+
+`docker compose -f airflow/compose.yaml up -d`
 
 ### (Optional) (Needs testing) Kubernetes cluster for Spark
 1. Start Minikube. Spark requires more resources than Minikube's defaults:

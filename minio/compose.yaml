@@ -11,7 +11,14 @@ services:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: password
     command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data  # Persist data using a named volume
+    restart: always       # Ensure the container restarts automatically on failures
 
 networks:
   spark-minio-network:
+    name: spark-minio-network
     driver: bridge
+
+volumes:
+  minio-data:              # Named volume to persist MinIO data
